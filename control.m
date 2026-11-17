@@ -15,29 +15,22 @@ A = [ 0,  1,               0,               0;
     0,  0,               0,               1;
     0,  0,       m * g * l * (M + m) / det_J, 0 ];
 
-% 【核心修正】：原本的 B 矩阵遗漏了电机对车身的直接反作用力矩 (-2τ)。
-% 此处直接基于电机扭矩 tau 建立真实的 B 矩阵。
 B = [ 0;
     2 * ((I + m * l^2) / R_wheel + m * l) / det_J;
     0;
     -2 * ((m * l) / R_wheel + M + m) / det_J ];
 
 % ==================== 3. LQR 权重配置 ====================
-Q = diag([10, 1, 1000, 100]); 
+Q = diag([25, 1, 1000, 100]); 
 R = 1; 
 
 % ==================== 4. 计算力矩增益 ====================
 % 因为 B 矩阵已经是基于扭矩的，所以直接用 lqr 计算即可，无需再乘 R_wheel/2
-K = lqr(A, B, Q, R); 
-
-% % 【核心修正】：适配 Simulink 的坐标系极性
-% % 你的 Simulink 模型中正角度代表后仰，因此需要反转俯仰角与俯仰角速度的增益符号
-K(3) = -K(3);
-K(4) = -K(4);
+K_balance = lqr(A, B, Q, R); 
 
 disp('-----------------------------------------');
 disp('修正后的单轮平衡力矩增益 K:');
-disp(K);
+disp(K_balance);
 disp('-----------------------------------------');
 
 
@@ -48,10 +41,10 @@ b_yaw = W_track / (I_z * R_wheel);
 A_yaw = [0 1; 0 0];
 B_yaw = [0; b_yaw];
 
-Q_yaw = diag([100, 1]); 
-R_yaw = 50;
+Q_yaw = diag([4, 0.8]);
+R_yaw = 100;
 
 K_yaw = lqr(A_yaw, B_yaw, Q_yaw, R_yaw); 
 
 fprintf('K_balance size: [%s],  K_yaw size: [%s]\n', ...
-    num2str(size(K)), num2str(size(K_yaw)));
+    num2str(size(K_balance)), num2str(size(K_yaw)));
